@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>控制台｜豬格拉底法庭</title>
+<link rel="stylesheet" href="control.css">
+<style>
+.rounds { grid-template-columns: repeat(3, 1fr); }
+.rounds button, .phases button { font-family: var(--serif); letter-spacing: 4px; padding: 11px 4px; font-size: 15px; }
+.phases { grid-template-columns: repeat(4, 1fr); }
+.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.side h3 { margin: 0 0 6px; font-family: var(--serif); font-size: 14px; letter-spacing: 3px; }
+.cards { display: flex; flex-direction: column; gap: 5px; }
+.cards .lab { font-size: 11px; color: var(--mu); margin-top: 6px; letter-spacing: 2px; }
+.cd { text-align: left; padding: 7px 10px; display: flex; justify-content: space-between; gap: 8px; }
+.cd .r { font-size: 11px; color: var(--mu); white-space: nowrap; }
+.cd.used { opacity: .45; }
+.cd.live { background: var(--ac); border-color: var(--ac); color: #fff; opacity: 1; }
+.cd.live .r { color: #fff; }
+.tstat { font-family: "Times New Roman", serif; font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 110px; }
+.tstat.over { color: var(--ac); }
+.stamps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.st { border: 1px solid var(--line2); background: #050505; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.st .w { font-family: var(--serif); letter-spacing: 2px; }
+.live-card { border: 1px solid var(--line2); background: #000; padding: 10px 12px; min-height: 52px; }
+.live-card b { font-family: var(--serif); font-size: 17px; letter-spacing: 2px; }
+.links input { flex: 1; font-size: 12px; }
+.cd.sel { outline: 2px solid #fff; outline-offset: -2px; }
+.preview { border: 1px solid var(--line2); background: #000; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.preview.on { border-color: #fff; }
+.pv-h { display: flex; justify-content: space-between; align-items: center; }
+.pv-t { font-family: var(--serif); font-size: 20px; font-weight: 900; letter-spacing: 2px; }
+.pv-l { font-size: 11px; color: var(--mu); letter-spacing: 2px; margin-top: 4px; }
+.pv-b { font-size: 14px; line-height: 1.7; }
+.pv-x { font-size: 13px; line-height: 1.8; color: #ccc; border-left: 3px solid var(--ac); padding-left: 10px; }
+</style>
+</head>
+<body>
+<header><h1>豬格拉底法庭</h1><a href="control-act1.html" id="toAct1">← 第一部控制台</a><a href="chat-hub.html" id="toHub" target="_blank">聊天統計中心 ↗</a>
+<span class="muted" style="margin-left:auto">快捷鍵：<kbd>Enter</kbd> 送出選取的卡　<kbd>Esc</kbd> 收卡　<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 換輪　<kbd>S</kbd> 停止計時</span></header>
+<div class="wrap">
+  <div class="col">
+    <section class="box">
+      <h2>輪次與階段</h2>
+      <div class="grid rounds" id="rounds"></div>
+      <div class="grid phases" id="phases"></div>
+      <div class="muted">輪次只用來分段；按階段會順便開始軟計時（表決不計時）。卡片任何時候都能出。</div>
+    </section>
+
+    <section class="box">
+      <div class="row between"><h2>畫面上的卡</h2><button id="unshow">收起卡片 Esc</button></div>
+      <div class="live-card" id="liveCard"></div>
+    </section>
+
+    <section class="box">
+      <h2>雙方手牌（點卡片先看說明，按「送出」才會上畫面）</h2>
+      <div class="preview" id="preview"></div>
+      <div class="sides">
+        <div class="side"><h3>正方（蘇格拉底）　墨衍</h3><div class="cards" id="cardsS"></div></div>
+        <div class="side"><h3>反方（快樂的豬）　星菓</h3><div class="cards" id="cardsP"></div></div>
+      </div>
+    </section>
+
+    <section class="box">
+      <h2>出卡頁連結</h2>
+      <div class="row links"><span class="muted">星菓</span><input id="lnkP" readonly><button data-copy="lnkP">複製</button></div>
+      <div class="row links"><span class="muted">墨衍</span><input id="lnkS" readonly><button data-copy="lnkS">複製</button></div>
+      <div class="muted">星菓用自己的出卡頁出牌，畫面會同步到雙方 OBS；她看不到你的手牌。</div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="box">
+      <h2>發言軟計時</h2>
+      <div class="row"><span class="tstat" id="tStat">—</span><span class="sp"></span><button id="tStop">停止 S</button></div>
+    </section>
+
+    <section class="box">
+      <h2>陪審團印章</h2>
+      <div class="stamps" id="stamps"></div>
+      <div class="row"><button id="toVerdict" class="big accent">進入最終裁決</button></div>
+    </section>
+
+    <div id="common" class="col"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script src="control-common.js"></script>
+<script>
+const { $, esc, D } = CC;
+const RZ = ['', '第一輪', '第二輪', '第三輪'];
+const PH_TIME = { '陳述': 120, '質詢': 60, '陪審團提問': 90 };
+$('toAct1').href = 'control-act1.html' + location.search;
+$('toHub').href = 'chat-hub.html' + location.search;
+buildCommon('common');
+
+const q = '?room=' + encodeURIComponent(Sync.room);
+$('lnkP').value = new URL('player.html' + q + '&side=p', location.href).href;
+$('lnkS').value = new URL('player.html' + q + '&side=s', location.href).href;
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard?.writeText($(b.dataset.copy).value); b.textContent = '已複製'; setTimeout(() => b.textContent = '複製', 1200); });
+
+$('rounds').innerHTML = [1, 2, 3].map(r => `<button data-r="${r}">${RZ[r]}</button>`).join('');
+const setRound = r => Sync.update({ scene: 'court', 'court/round': r, 'court/phase': '', 'court/card/id': '', 'court/card/side': '', 'court/timer/running': false, 'featured/show': false });
+$('rounds').onclick = e => { const b = e.target.closest('[data-r]'); if (b) setRound(Number(b.dataset.r)); };
+
+$('phases').innerHTML = D.phases.map(p => `<button data-ph="${p}">${p}</button>`).join('');
+$('phases').onclick = e => {
+  const b = e.target.closest('[data-ph]'); if (!b) return;
+  const ph = b.dataset.ph, patch = { scene: 'court', 'court/phase': ph };
+  patch['court/timer'] = PH_TIME[ph] ? { start: Sync.now(), dur: PH_TIME[ph], running: true, label: ph } : { start: 0, dur: 0, running: false, label: '' };
+  Sync.update(patch);
+};
+
+function cardList(side) {
+  const cs = D.cards[side];
+  const grp = (type, lab) => `<div class="lab">${lab}</div>` + cs.filter(c => c.type === type).map(c =>
+    `<button class="cd" data-side="${side}" data-id="${c.id}"><span>${esc(c.title)}</span><span class="r"></span></button>`).join('');
+  return grp('arg', '論點卡') + grp('q', '質詢卡');
+}
+$('cardsS').innerHTML = cardList('s');
+$('cardsP').innerHTML = cardList('p');
+let sel = null;   // 目前選取（尚未送出）的卡
+function renderPreview() {
+  const el = $('preview');
+  if (!sel) { el.innerHTML = '<span class="muted">尚未選取卡片</span>'; el.classList.remove('on'); return; }
+  const c = (D.cards[sel.side] || []).find(x => x.id === sel.id);
+  const live = Sync.get().court.card;
+  const isLive = live.side === sel.side && live.id === sel.id;
+  el.classList.add('on');
+  el.innerHTML = `<div class="pv-h"><span class="muted">${D.hosts[sel.side]}｜${D.sides[sel.side]}｜${c.type === 'q' ? '質詢卡' : '論點卡'}</span>${isLive ? '<span class="pill ok">畫面上</span>' : ''}</div>
+    <div class="pv-t">${esc(c.title)}</div>
+    <div class="pv-l">畫面會顯示</div><div class="pv-b">${esc(c.body)}</div>
+    ${c.explain ? `<div class="pv-l">給主持人的說明（不會上畫面）</div><div class="pv-x">${esc(c.explain).replace(/\n/g, '<br>')}</div>` : ''}
+    <div class="row">${isLive ? '<button id="pvBack">收回</button>' : '<button id="pvSend" class="live big">送出 Enter</button>'}<button id="pvCancel">取消選取</button></div>`;
+  $('pvSend') && ($('pvSend').onclick = sendSel);
+  $('pvBack') && ($('pvBack').onclick = () => Sync.update({ 'court/card/id': '', 'court/card/side': '' }));
+  $('pvCancel').onclick = () => { sel = null; renderPreview(); markSel(); };
+}
+function markSel() { document.querySelectorAll('.cd').forEach(b => b.classList.toggle('sel', !!sel && b.dataset.id === sel.id)); }
+function sendSel() {
+  if (!sel) return;
+  Sync.update({ scene: 'court', 'court/card': { side: sel.side, id: sel.id, t: Sync.now(), custom: { type: 'arg', title: '', body: '' } }, ['court/used/' + sel.id]: true });
+}
+document.querySelectorAll('.cards').forEach(el => el.onclick = e => {
+  const b = e.target.closest('.cd'); if (!b) return;
+  sel = { side: b.dataset.side, id: b.dataset.id };
+  renderPreview(); markSel();
+});
+renderPreview();
+$('unshow').onclick = () => Sync.update({ 'court/card/id': '', 'court/card/side': '' });
+$('tStop').onclick = () => Sync.update({ 'court/timer/running': false });
+
+$('stamps').innerHTML = [1, 2, 3].map(r => `<div class="st"><div class="w" data-w="${r}"></div>
+  <div class="row"><button data-st="s" data-sr="${r}">正方</button><button data-st="p" data-sr="${r}">反方</button><button data-st="" data-sr="${r}">清除</button></div></div>`).join('');
+$('stamps').onclick = e => {
+  const b = e.target.closest('[data-st]'); if (!b) return;
+  const r = Number(b.dataset.sr), side = b.dataset.st;
+  const patch = { ['court/stamps/r' + r]: side };
+  if (side) patch['court/stampEvt'] = { side, round: r, t: Sync.now() };
+  Sync.update(patch);
+};
+$('toVerdict').onclick = () => Sync.update({ scene: 'verdict', 'court/card/id': '', 'court/timer/running': false, 'featured/show': false });
+
+addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'Escape') $('unshow').click();
+  else if (e.key === 'Enter') sendSel();
+  else if (['1', '2', '3'].includes(e.key)) setRound(Number(e.key));
+  else if (e.key.toLowerCase() === 's') $('tStop').click();
+});
+
+function tick() {
+  const t = Sync.get().court.timer;
+  if (!t.running) { $('tStat').textContent = '—'; $('tStat').classList.remove('over'); return; }
+  const left = Math.ceil((t.start + t.dur * 1000 - Sync.now()) / 1000), a = Math.abs(left);
+  $('tStat').textContent = (left < 0 ? '+' : '') + String(Math.floor(a / 60)).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0');
+  $('tStat').classList.toggle('over', left < 0);
+}
+setInterval(tick, 250);
+
+Sync.onChange(st => {
+  const c = st.court, used = c.used || {}, inCourt = st.scene === 'court';
+  document.querySelectorAll('[data-r]').forEach(b => b.classList.toggle('on', inCourt && Number(b.dataset.r) === c.round));
+  document.querySelectorAll('[data-ph]').forEach(b => b.classList.toggle('on', inCourt && b.dataset.ph === c.phase));
+  document.querySelectorAll('.cd').forEach(b => {
+    b.classList.toggle('used', !!used[b.dataset.id]);
+    b.classList.toggle('live', c.card.id === b.dataset.id);
+    b.querySelector('.r').textContent = c.card.id === b.dataset.id ? '畫面上' : used[b.dataset.id] ? '已出' : '';
+  });
+  let card = null;
+  if (c.card.id === 'custom') card = c.custom || c.card.custom;
+  else if (c.card.id) card = (D.cards[c.card.side] || []).find(x => x.id === c.card.id);
+  $('liveCard').innerHTML = card && c.card.side
+    ? `<span class="muted">${D.hosts[c.card.side]}｜${card.type === 'q' ? '質詢卡' : '論點卡'}${c.card.id === 'custom' ? '（臨時卡）' : ''}${inCourt ? '' : '　※ 法庭環節才會顯示'}</span><br><b>${esc(card.title)}</b>`
+    : '<span class="muted">目前沒有卡片</span>';
+  renderPreview();
+  [1, 2, 3].forEach(r => {
+    const w = c.stamps['r' + r];
+    document.querySelector(`[data-w="${r}"]`).textContent = `${RZ[r]}：${w === 's' ? '正方（蘇格拉底）' : w === 'p' ? '反方（快樂的豬）' : '未表決'}`;
+    document.querySelectorAll(`[data-st][data-sr="${r}"]`).forEach(b => b.classList.toggle('on', !!b.dataset.st && b.dataset.st === w));
+  });
+  tick();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>控制台｜第一部 情境題</title>
+<link rel="stylesheet" href="control.css">
+<style>
+.qlist { display: flex; flex-direction: column; gap: 6px; }
+.q { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; }
+.q .n { color: var(--mu); font-weight: 700; }
+.q .tt { font-weight: 700; }
+.q .op { display: block; font-size: 13px; color: var(--mu); font-weight: 400; }
+.q.used { opacity: .4; }
+.q.on { opacity: 1; background: #fff; color: #000; border-color: #fff; }
+.q.on .op, .q.on .n, .q.on .tag { color: #444; }
+.q .tag { font-size: 12px; color: var(--mu); }
+.now { background: #000; border: 1px solid var(--line2); padding: 12px 14px; }
+.now .tt { font-family: var(--serif); font-size: 22px; font-weight: 900; letter-spacing: 2px; }
+.now .tw { color: var(--ac); margin-top: 4px; }
+.pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.pages button { text-align: left; font-size: 13px; }
+.lab { font-size: 11px; color: var(--mu); letter-spacing: 2px; margin-top: 4px; }
+.talk { border-left: 3px solid var(--ac); padding: 6px 10px; background: #050505; font-size: 13px; color: #ddd; min-height: 34px; }
+.talk::before { content: '聊天提示　'; color: var(--ac); font-size: 11px; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+<header><h1>第一部｜情境題輪盤</h1><a href="control-court.html" id="toCourt">切到法庭控制台 →</a>
+<span class="muted" style="margin-left:auto">快捷鍵：<kbd>R</kbd> 隨機抽題　<kbd>T</kbd> 延伸追問　<kbd>H</kbd> 收起題目　<kbd>←</kbd><kbd>→</kbd> 賽事介紹／小故事／中場翻頁</span></header>
+<div class="wrap">
+  <div class="col">
+    <section class="box">
+      <div class="row between"><h2>賽事介紹（環節：賽事介紹）</h2><span class="muted" id="evtNow"></span></div>
+      <div class="pages" id="evt"></div>
+      <div class="talk" id="evtTalk"></div>
+    </section>
+
+    <section class="box">
+      <div class="row between"><h2>辯題小故事</h2><span class="muted" id="storyNow"></span></div>
+      <div class="lab">本次辯題</div><div class="pages" id="storyMain"></div>
+      <div class="lab">複賽辯題預告</div><div class="pages" id="storyNext"></div>
+      <div class="talk" id="storyTalk"></div>
+    </section>
+
+    <section class="box">
+      <div class="row between"><h2>中場：法庭規則說明（環節：中場）</h2><span class="muted" id="interNow"></span></div>
+      <div class="pages" id="inter"></div>
+      <div class="talk" id="interTalk"></div>
+    </section>
+
+    <section class="box">
+      <h2>目前題目</h2>
+      <div class="now" id="now"></div>
+      <div class="row">
+        <button class="big live" id="draw">隨機抽題</button>
+        <button class="big" id="twist">顯示延伸追問</button>
+        <button class="big" id="hide">收起題目</button>
+        <span class="sp"></span>
+        <button id="resetUsed">重置已抽紀錄</button>
+      </div>
+      <div class="muted">抽題會自動跳到「第一部」環節，並清空這題的票數。每題流程：念題 → 聊天室打 1/2 → 念 2–3 則留言 → 兩人閒聊 → 延伸追問再表態。</div>
+    </section>
+
+    <section class="box">
+      <h2>題庫（點一下直接出這題）</h2>
+      <div class="qlist" id="qlist"></div>
+    </section>
+  </div>
+  <div class="col" id="common"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script src="control-common.js"></script>
+<script>
+const { $, esc, D } = CC;
+$('toCourt').href = 'control-court.html' + location.search;
+buildCommon('common', {
+  onScene: s => (s === 'story' ? { 'story/idx': Sync.get().story.idx || 0 } : null),
+});
+
+const evLabel = p => p.type === 'whites' ? '白辯士' : p.type === 'info' ? '觀賽資訊' : p.kicker;
+$('evt').innerHTML = D.eventPages.map((p, i) => `<button data-e="${i}">${i + 1}. ${esc(evLabel(p))}</button>`).join('');
+$('evt').onclick = e => { const i = e.target.closest('[data-e]')?.dataset.e; if (i !== undefined) Sync.update({ scene: 'event', 'evt/idx': Number(i) }); };
+$('inter').innerHTML = D.interPages.map((p, i) => `<button data-i="${i}">${i + 1}. ${esc(p.kicker)}</button>`).join('');
+$('inter').onclick = e => { const i = e.target.closest('[data-i]')?.dataset.i; if (i !== undefined) Sync.update({ scene: 'intermission', 'inter/idx': Number(i) }); };
+const storyBtn = (c, i) => `<button data-s="${i}">${esc(c.kicker)}</button>`;
+$('storyMain').innerHTML = D.story.map((c, i) => c.part === 'main' ? storyBtn(c, i) : '').join('');
+$('storyNext').innerHTML = D.story.map((c, i) => c.part === 'next' ? storyBtn(c, i) : '').join('');
+document.querySelectorAll('#storyMain, #storyNext').forEach(el => el.onclick = e => { const i = e.target.closest('[data-s]')?.dataset.s; if (i !== undefined) Sync.update({ scene: 'story', 'story/idx': Number(i) }); });
+
+$('qlist').innerHTML = D.scenarios.map((q, i) => `<button class="q" data-q="${i}">
+  <span class="n">${q.tag ? '暖' : i + 1}</span>
+  <span><span class="tt">${esc(q.title)}</span><span class="op">1 ${esc(q.s)}　／　2 ${esc(q.p)}</span></span>
+  <span class="tag" data-tag="${i}"></span></button>`).join('');
+
+function pick(i) {
+  Sync.update({
+    scene: 'act1',
+    'act1/q': i, 'act1/twist': false, 'act1/drawT': Sync.now(), ['act1/used/' + i]: true,
+    'featured/show': false,
+  });
+  Sync.voteCmd('clear');
+}
+function drawRandom() {
+  const used = Sync.get().act1.used || {};
+  let pool = D.scenarios.map((q, i) => i).filter(i => !D.scenarios[i].spare && !used[i]);
+  if (!pool.length) pool = D.scenarios.map((q, i) => i).filter(i => !used[i]);
+  if (!pool.length) { alert('題目都抽完了，可以按「重置已抽紀錄」'); return; }
+  pick(pool[Math.floor(Math.random() * pool.length)]);
+}
+$('qlist').onclick = e => { const b = e.target.closest('[data-q]'); if (b) pick(Number(b.dataset.q)); };
+$('draw').onclick = drawRandom;
+$('twist').onclick = () => Sync.update({ 'act1/twist': !Sync.get().act1.twist });
+$('hide').onclick = () => Sync.update({ 'act1/q': -1, 'act1/twist': false });
+$('resetUsed').onclick = () => Sync.update({ 'act1/used': null });
+
+addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'r') drawRandom();
+  else if (k === 't') $('twist').click();
+  else if (k === 'h') $('hide').click();
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const st = Sync.get(), d = e.key === 'ArrowRight' ? 1 : -1;
+    if (st.scene === 'event') { const n = st.evt.idx + d; if (n >= 0 && n < D.eventPages.length) Sync.update({ 'evt/idx': n }); }
+    else if (st.scene === 'intermission') { const n = st.inter.idx + d; if (n >= 0 && n < D.interPages.length) Sync.update({ 'inter/idx': n }); }
+    else { const n = st.story.idx + d; if (n >= 0 && n < D.story.length) Sync.update({ scene: 'story', 'story/idx': n }); }
+  }
+});
+
+Sync.onChange(st => {
+  const a = st.act1, used = a.used || {};
+  const q = D.scenarios[a.q];
+  $('now').innerHTML = q
+    ? `<div class="tt">${esc(q.title)}</div><div class="muted">1 ${esc(q.s)}　／　2 ${esc(q.p)}</div><div class="tw">${a.twist ? '延伸追問（顯示中）：' : '延伸追問：'}${esc(q.twist)}</div>`
+    : '<span class="muted">目前沒有顯示題目</span>';
+  $('twist').classList.toggle('on', !!a.twist);
+  $('twist').textContent = a.twist ? '收起延伸追問' : '顯示延伸追問';
+  const nUsed = Object.keys(used).length;
+  $('draw').textContent = `隨機抽題（已抽 ${nUsed}）`;
+  document.querySelectorAll('.q').forEach(b => {
+    const i = Number(b.dataset.q);
+    b.classList.toggle('used', !!used[i] && i !== a.q);
+    b.classList.toggle('on', i === a.q && st.scene === 'act1');
+    b.querySelector('.tag').textContent = i === a.q ? '目前' : used[i] ? '已抽' : (D.scenarios[i].spare ? '備用' : '正式');
+  });
+  document.querySelectorAll('[data-s]').forEach(b => b.classList.toggle('on', st.scene === 'story' && Number(b.dataset.s) === st.story.idx));
+  document.querySelectorAll('[data-e]').forEach(b => b.classList.toggle('on', st.scene === 'event' && Number(b.dataset.e) === st.evt.idx));
+  $('storyNow').textContent = st.scene === 'story' ? '顯示中' : '';
+  $('evtNow').textContent = st.scene === 'event' ? '顯示中' : '';
+  document.querySelectorAll('[data-i]').forEach(b => b.classList.toggle('on', st.scene === 'intermission' && Number(b.dataset.i) === st.inter.idx));
+  $('interNow').textContent = st.scene === 'intermission' ? '顯示中' : '';
+  $('interTalk').textContent = D.interPages[st.inter.idx]?.talk || '';
+  const sp = D.story[st.story.idx], ep = D.eventPages[st.evt.idx];
+  $('storyTalk').textContent = sp?.talk || '';
+  $('evtTalk').textContent = ep?.talk || '';
+});
+</script>
+</body>
+</html>

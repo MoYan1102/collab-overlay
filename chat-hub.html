@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>聊天統計中心</title>
+<link rel="stylesheet" href="control.css">
+<style>
+.wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+.src { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; align-items: center; }
+.big3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: #050505; border: 1px solid var(--line2); padding: 10px; }
+.stat .n { font-family: 'Times New Roman', serif; font-size: 34px; font-weight: 700; }
+.stat .l { font-size: 12px; color: var(--mu); }
+.stat.s { border-color: #fff; } .stat.t .n { color: var(--ac); }
+#feed { height: 640px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; background: #000; border: 1px solid var(--line2); padding: 6px; }
+.m { display: grid; grid-template-columns: 26px auto 1fr auto; gap: 8px; align-items: baseline; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.m:hover { background: #1c1c1c; }
+.m .pf { font-size: 11px; font-weight: 700; text-align: center; border-radius: 3px; padding: 0 2px; }
+.m .pf.tw { background: #6441a5; color: #fff; } .m .pf.yt { background: #c4302b; color: #fff; }
+.m .nm { color: var(--mu); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.m .tx { word-break: break-all; }
+.m .vt { font-size: 12px; font-weight: 700; padding: 0 6px; border-radius: 3px; }
+.m .vt.s { background: #fff; color: #000; } .m .vt.p { border: 1px solid #fff; }
+.m .vt.turn { outline: 2px solid var(--ac); }
+.err { color: var(--ac); font-size: 12px; }
+</style>
+</head>
+<body>
+<header><h1>聊天統計中心</h1><span class="muted">直播全程只開這一頁一次（開兩頁會重複計票）</span><span id="st" class="pill" style="margin-left:auto"></span></header>
+<div class="wrap">
+  <div class="col">
+    <section class="box">
+      <h2>聊天室來源</h2>
+      <div class="src"><span>Twitch</span><input id="twCh" placeholder="頻道名稱，多個用逗號分隔"><button id="twBtn">連線</button></div>
+      <div class="muted" id="twSt"></div>
+      <div class="src"><span>YouTube</span><input id="ytVid" placeholder="直播網址或影片 ID，多個用逗號分隔"><button id="ytBtn">連線</button></div>
+      <div class="src"><span>API 金鑰</span><input id="ytKey" type="password" placeholder="YouTube Data API 金鑰（只存在這台電腦）"><span></span></div>
+      <div class="muted" id="ytSt"></div>
+      <div class="muted">YouTube 已用配額：<b id="quota">0</b> 點（每日上限 10,000，太平洋時間午夜重置）</div>
+    </section>
+
+    <section class="box">
+      <h2>目前統計（每位觀眾以最後一次打的 1／2 為準）</h2>
+      <div class="big3">
+        <div class="stat s"><div class="n" id="nS">0</div><div class="l">1 正方（蘇格拉底）</div></div>
+        <div class="stat p"><div class="n" id="nP">0</div><div class="l">2 反方（快樂的豬）</div></div>
+        <div class="stat t"><div class="n" id="nT">0</div><div class="l">倒戈（相對入席）</div></div>
+      </div>
+      <div class="muted" id="baseInfo"></div>
+      <div class="row">
+        <button id="cClear">換題：清空票數</button>
+        <button id="cBase" class="accent">記為入席表態</button>
+        <button id="cRestore">法庭開庭：從入席表態起算</button>
+      </div>
+      <div class="muted">這三個按鈕跟控制台上的同名按鈕是同一件事，在哪一邊按都可以。</div>
+    </section>
+
+    <section class="box">
+      <h2>點選留言 → 顯示為</h2>
+      <div class="row"><select id="kind"><option>精選留言</option><option>陪審團提問</option><option>倒戈證詞</option></select>
+      <button id="hideF">收起畫面上的留言</button></div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="box">
+      <div class="row between"><h2>合併聊天室</h2><label class="chk"><input type="checkbox" id="onlyVote"> 只看投票</label><label class="chk"><input type="checkbox" id="onlyTalk"> 隱藏純投票</label></div>
+      <div id="feed"></div>
+      <div class="muted">點任何一則留言即會顯示在雙方畫面上；紅框＝倒戈的票。</div>
+    </section>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script src="chat.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KEY = 'collab-hub-' + Sync.room;
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(KEY + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) {} },
+};
+
+// ---- 選票紀錄（存在這台電腦，重新整理不會遺失）----
+let cur = LS.get('cur', {});     // uid → 's'|'p'
+let base = LS.get('base', {});
+let lastCmdT = LS.get('cmdT', null);
+let quota = LS.get('quota', { day: '', n: 0 });
+
+function count() {
+  let s = 0, p = 0, turn = 0;
+  for (const [u, v] of Object.entries(cur)) {
+    if (v === 's') s++; else p++;
+    if (base[u] && base[u] !== v) turn++;
+  }
+  return { s, p, turn, voters: Object.keys(cur).length };
+}
+let pushT = null;
+function push() {
+  LS.set('cur', cur); LS.set('base', base);
+  const c = count();
+  $('nS').textContent = c.s; $('nP').textContent = c.p; $('nT').textContent = c.turn;
+  $('baseInfo').textContent = Object.keys(base).length ? `入席表態紀錄：${Object.keys(base).length} 人` : '尚未記錄入席表態';
+  clearTimeout(pushT);
+  pushT = setTimeout(() => Sync.update({ 'votes/s': c.s, 'votes/p': c.p, 'votes/turn': c.turn, 'hub/voters': c.voters }), 250);
+}
+
+function handleCmd(cmd) {
+  if (!cmd || !cmd.t || cmd.t === lastCmdT) return;
+  lastCmdT = cmd.t; LS.set('cmdT', lastCmdT);
+  if (cmd.type === 'clear') cur = {};
+  else if (cmd.type === 'base') base = { ...cur };
+  else if (cmd.type === 'restore') cur = { ...base };
+  push();
+}
+
+// ---- 訊息 ----
+const feed = $('feed');
+function onMsg(m) {
+  const v = ChatSources.parseVote(m.text);
+  let turned = false;
+  if (v) {
+    turned = !!base[m.uid] && base[m.uid] !== v && cur[m.uid] !== v;
+    cur[m.uid] = v; push();
+  }
+  const el = document.createElement('div');
+  el.className = 'm'; el.dataset.vote = v ? '1' : '';
+  el.dataset.talk = v && m.text.trim().length <= 2 ? '' : '1';
+  el.innerHTML = `<span class="pf ${m.platform}">${m.platform === 'tw' ? 'TW' : 'YT'}</span><span class="nm">${esc(m.name)}</span><span class="tx">${esc(m.text)}</span>` +
+    (v ? `<span class="vt ${v} ${turned ? 'turn' : ''}">${v === 's' ? '1 正' : '2 反'}</span>` : '<span></span>');
+  el.onclick = () => Sync.update({ featured: { kind: $('kind').value, user: (m.platform === 'tw' ? 'Twitch｜' : 'YouTube｜') + m.name, text: m.text, show: true, t: Sync.now() } });
+  applyFilter(el);
+  const atBottom = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 30;
+  feed.appendChild(el);
+  while (feed.children.length > 400) feed.firstChild.remove();
+  if (atBottom) feed.scrollTop = feed.scrollHeight;
+}
+function applyFilter(el) {
+  const hide = ($('onlyVote').checked && !el.dataset.vote) || ($('onlyTalk').checked && !el.dataset.talk);
+  el.style.display = hide ? 'none' : '';
+}
+['onlyVote', 'onlyTalk'].forEach(id => $(id).onchange = () => [...feed.children].forEach(applyFilter));
+
+// ---- 連線 ----
+$('twCh').value = LS.get('twCh', (window.APP_CONFIG.chat?.twitch || []).join(', '));
+$('ytVid').value = LS.get('ytVid', '');
+$('ytKey').value = LS.get('ytKey', '');
+
+let tw = [], yt = [];
+const stTxt = { connecting: '連線中', online: '已連線', retrying: '重新連線中', off: '未連線', error: '錯誤' };
+function setSrcStatus(box, map) {
+  $(box).innerHTML = Object.entries(map).map(([k, v]) => `${esc(k)}：${stTxt[v.s] || v.s}${v.e ? ` <span class="err">${esc(v.e)}</span>` : ''}`).join('　');
+}
+const twMap = {}, ytMap = {};
+$('twBtn').onclick = () => {
+  if (tw.length) { tw.forEach(c => c.stop()); tw = []; $('twBtn').textContent = '連線'; return; }
+  LS.set('twCh', $('twCh').value);
+  const chs = $('twCh').value.split(/[,，\s]+/).filter(Boolean);
+  tw = chs.map(ch => ChatSources.twitch(ch, onMsg, s => { twMap[ch] = { s }; setSrcStatus('twSt', twMap); }));
+  $('twBtn').textContent = tw.length ? '中斷' : '連線';
+};
+function addQuota(n) {
+  const day = new Date().toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' });
+  if (quota.day !== day) quota = { day, n: 0 };
+  quota.n += n; LS.set('quota', quota); $('quota').textContent = quota.n;
+}
+addQuota(0);
+$('ytBtn').onclick = () => {
+  if (yt.length) { yt.forEach(c => c.stop()); yt = []; $('ytBtn').textContent = '連線'; return; }
+  const key = $('ytKey').value.trim();
+  if (!key) { $('ytKey').focus(); $('ytSt').innerHTML = '<span class="err">請先填 API 金鑰</span>'; return; }
+  LS.set('ytVid', $('ytVid').value); LS.set('ytKey', key);
+  const vids = $('ytVid').value.split(/[,，\s]+/).filter(Boolean);
+  yt = vids.map(v => ChatSources.youtube(key, v, onMsg, (s, e) => { ytMap[v.slice(-11)] = { s, e }; setSrcStatus('ytSt', ytMap); }, addQuota));
+  $('ytBtn').textContent = yt.length ? '中斷' : '連線';
+};
+
+// ---- 控制 ----
+$('cClear').onclick = () => Sync.voteCmd('clear');
+$('cBase').onclick = () => Sync.voteCmd('base');
+$('cRestore').onclick = () => { if (Object.keys(base).length || confirm('還沒有入席表態紀錄，確定要繼續嗎？')) Sync.voteCmd('restore'); };
+$('hideF').onclick = () => Sync.update({ 'featured/show': false });
+
+let first = true;
+Sync.onChange(st => {
+  if (first) { first = false; if (lastCmdT === null) { lastCmdT = st.votes.cmd.t; LS.set('cmdT', lastCmdT); } }
+  handleCmd(st.votes.cmd);
+});
+Sync.onStatus(s => { $('st').textContent = { local: '本機模式', online: '雲端已連線', offline: '雲端離線', connecting: '連線中', error: '載入失敗' }[s] || s; });
+setInterval(() => Sync.update({ 'hub/alive': Sync.now() }), 5000);
+Sync.update({ 'hub/alive': Sync.now() });
+push();
+
+// 測試用：網址加 ?demo=1 會產生假留言
+if (new URLSearchParams(location.search).has('demo')) {
+  const names = ['路過的豬', '哲學系學生', '吃飽睡', 'Socrates粉', '晚餐吃什麼', '星菓推', '墨汁', '小明'];
+  const texts = ['1', '2', '2 當豬比較快樂', '1 痛苦但清醒', '這題好難', '哈哈哈', '１', '2', '我選蘇格拉底但是會哭', '1'];
+  setInterval(() => {
+    const i = Math.floor(Math.random() * names.length);
+    onMsg({ platform: Math.random() < .5 ? 'tw' : 'yt', uid: 'demo:' + i, name: names[i], text: texts[Math.floor(Math.random() * texts.length)], ts: Date.now() });
+  }, 700);
+}
+</script>
+</body>
+</html>

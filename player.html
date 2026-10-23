@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出卡</title>
+<link rel="stylesheet" href="control.css">
+<style>
+.wrap { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.c { text-align: left; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; border: 1px solid var(--line2); background: #0a0a0a; }
+.c .ty { font-size: 11px; letter-spacing: 3px; color: var(--mu); }
+.c.q .ty { color: var(--ac); }
+.c .tt { font-family: var(--serif); font-size: 18px; font-weight: 900; letter-spacing: 2px; color: #fff; }
+.c .bd { font-size: 13px; color: #bbb; line-height: 1.6; }
+.c.used { opacity: .45; }
+.c.live { background: #fff; border-color: #fff; opacity: 1; }
+.c.live .tt { color: #000; } .c.live .bd { color: #333; } .c.live .ty { color: var(--ac); }
+.lab { font-family: var(--serif); letter-spacing: 3px; color: var(--mu); margin-top: 6px; }
+.status { border: 1px solid var(--line2); background: #000; padding: 12px; }
+.status b { font-family: var(--serif); font-size: 18px; letter-spacing: 2px; }
+.ph { font-family: var(--serif); font-size: 22px; letter-spacing: 4px; }
+.timer { font-family: "Times New Roman", serif; font-size: 36px; font-weight: 700; }
+.timer.over { color: var(--ac); }
+#cTitle, #cBody { width: 100%; }
+.c.sel { outline: 2px solid var(--ac); outline-offset: -2px; }
+.preview { border: 1px solid var(--line2); background: #000; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.preview.on { border-color: #fff; }
+.pv-t { font-family: var(--serif); font-size: 20px; font-weight: 900; letter-spacing: 2px; }
+.pv-l { font-size: 11px; color: var(--mu); letter-spacing: 2px; margin-top: 4px; }
+.pv-b { font-size: 14px; line-height: 1.7; }
+.pv-x { font-size: 13px; line-height: 1.8; color: #ccc; border-left: 3px solid var(--ac); padding-left: 10px; }
+.c .bd { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+</style>
+</head>
+<body>
+<header><h1 id="h1">出卡</h1><span class="muted" id="who"></span><span id="st" class="pill" style="margin-left:auto"></span></header>
+<div class="wrap">
+  <div class="col">
+    <section class="box">
+      <div class="row between"><h2>我的手牌</h2><button id="unshow">收回我的卡</button></div>
+      <div class="muted">點卡片先看說明，按「送出」才會上畫面。任何時候都能出，不限輪次。</div>
+      <div class="preview" id="preview"></div>
+      <div class="lab">論點卡</div><div class="hand" id="handArg"></div>
+      <div class="lab">質詢卡</div><div class="hand" id="handQ"></div>
+    </section>
+    <section class="box">
+      <h2>臨時卡（即興想到的）</h2>
+      <div class="row"><select id="cType"><option value="arg">論點卡</option><option value="q">質詢卡</option></select><input id="cTitle" placeholder="標題，例如：快樂也需要練習" style="flex:1"></div>
+      <textarea id="cBody" rows="2" placeholder="一句話說明（可留空）"></textarea>
+      <div class="row"><button id="cGo" class="accent">出這張臨時卡</button><span class="muted" id="cErr"></span></div>
+    </section>
+  </div>
+  <div class="col">
+    <section class="box">
+      <h2>現在</h2>
+      <div class="row between"><span class="ph" id="phase"></span><span class="timer" id="timer"></span></div>
+      <div class="status" id="live"></div>
+    </section>
+    <section class="box">
+      <h2>畫面預覽</h2>
+      <div class="pv"><iframe id="pv"></iframe></div>
+    </section>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script>
+const D = window.SHOW_DATA;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SIDE = new URLSearchParams(location.search).get('side') === 's' ? 's' : 'p';
+const OTHER = SIDE === 's' ? 'p' : 's';
+const RZ = ['', '第一輪', '第二輪', '第三輪'];
+document.title = `出卡｜${D.hosts[SIDE]}`;
+$('h1').textContent = `${D.hosts[SIDE]}的出卡台`;
+$('who').textContent = D.sides[SIDE];
+$('pv').src = 'overlay.html?room=' + encodeURIComponent(Sync.room) + '&preview=1';
+
+const cards = D.cards[SIDE];
+const cardHTML = c => `<button class="c ${c.type}" data-id="${c.id}"><span class="ty">${c.type === 'q' ? '質詢卡' : '論點卡'}<span class="flag"></span></span><span class="tt">${esc(c.title)}</span><span class="bd">${esc(c.body)}</span></button>`;
+$('handArg').innerHTML = cards.filter(c => c.type === 'arg').map(cardHTML).join('');
+$('handQ').innerHTML = cards.filter(c => c.type === 'q').map(cardHTML).join('');
+
+function play(id, custom) {
+  Sync.update({
+    'court/card': { side: SIDE, id, t: Sync.now(), custom: custom || { type: 'arg', title: '', body: '' } },
+    ['court/used/' + id]: true,
+  });
+}
+let sel = null;
+function renderPreview() {
+  const el = $('preview');
+  if (!sel) { el.innerHTML = '<span class="muted">尚未選取卡片</span>'; el.classList.remove('on'); return; }
+  const c = cards.find(x => x.id === sel);
+  const live = Sync.get().court.card, isLive = live.side === SIDE && live.id === sel;
+  el.classList.add('on');
+  el.innerHTML = `<div class="pv-t">${esc(c.title)}</div><div class="pv-l">畫面會顯示</div><div class="pv-b">${esc(c.body)}</div>
+    ${c.explain ? `<div class="pv-l">說明（只有你看得到）</div><div class="pv-x">${esc(c.explain).replace(/\n/g, '<br>')}</div>` : ''}
+    <div class="row">${isLive ? '<button id="pvBack">收回</button>' : '<button id="pvSend" class="live big">送出</button>'}<button id="pvCancel">取消選取</button></div>`;
+  $('pvSend') && ($('pvSend').onclick = () => play(sel));
+  $('pvBack') && ($('pvBack').onclick = () => Sync.update({ 'court/card/id': '', 'court/card/side': '' }));
+  $('pvCancel').onclick = () => { sel = null; renderPreview(); mark(); };
+}
+function mark() { document.querySelectorAll('.c').forEach(b => b.classList.toggle('sel', b.dataset.id === sel)); }
+document.querySelectorAll('.hand').forEach(h => h.onclick = e => {
+  const b = e.target.closest('.c'); if (!b) return;
+  sel = b.dataset.id; renderPreview(); mark();
+});
+renderPreview();
+$('unshow').onclick = () => { if (Sync.get().court.card.side === SIDE) Sync.update({ 'court/card/id': '', 'court/card/side': '' }); };
+$('cGo').onclick = () => {
+  const title = $('cTitle').value.trim();
+  if (!title) { $('cErr').textContent = '先寫標題'; $('cTitle').focus(); return; }
+  play('custom', { type: $('cType').value, title, body: $('cBody').value.trim() });
+  $('cTitle').value = ''; $('cBody').value = ''; $('cErr').textContent = '';
+};
+$('cTitle').oninput = () => $('cErr').textContent = '';
+
+function cardOf(c) {
+  if (c.id === 'custom') return c.custom;
+  return (D.cards[c.side] || []).find(x => x.id === c.id);
+}
+function tick() {
+  const st = Sync.get(), t = st.court.timer;
+  if (st.scene !== 'court' || !t.running) { $('timer').textContent = ''; return; }
+  const left = Math.ceil((t.start + t.dur * 1000 - Sync.now()) / 1000), a = Math.abs(left);
+  $('timer').textContent = (left < 0 ? '+' : '') + String(Math.floor(a / 60)).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0');
+  $('timer').classList.toggle('over', left < 0);
+}
+setInterval(tick, 250);
+
+Sync.onChange(st => {
+  const c = st.court, used = c.used || {}, inCourt = st.scene === 'court';
+  $('phase').textContent = inCourt ? `${RZ[c.round]}${c.phase ? '　' + c.phase : ''}` : (D.sceneNames[st.scene] || '');
+  document.querySelectorAll('.c').forEach(b => {
+    const live = c.card.side === SIDE && c.card.id === b.dataset.id;
+    b.classList.toggle('live', live);
+    b.classList.toggle('used', !!used[b.dataset.id]);
+    b.querySelector('.flag').textContent = live ? '　畫面上' : used[b.dataset.id] ? '　已出' : '';
+  });
+  const card = c.card.side ? cardOf(c.card) : null;
+  $('live').innerHTML = card && card.title
+    ? `<span class="muted">畫面上：${D.hosts[c.card.side]}的${card.type === 'q' ? '質詢卡' : '論點卡'}${inCourt ? '' : '（法庭環節開始後才會顯示）'}</span><br><b>${esc(card.title)}</b>${card.body ? `<div class="muted" style="color:#bbb">${esc(card.body)}</div>` : ''}`
+    : `<span class="muted">${inCourt ? '畫面上沒有卡片' : '法庭環節開始前，出的卡不會顯示在畫面上'}</span>`;
+  renderPreview();
+  tick();
+});
+Sync.onStatus(s => {
+  const m = { local: ['本機模式', 'warn'], online: ['已連線', 'ok'], offline: ['離線', 'bad'], connecting: ['連線中', 'warn'], error: ['載入失敗', 'bad'] }[s] || [s, 'warn'];
+  $('st').textContent = m[0]; $('st').className = 'pill ' + m[1];
+});
+</script>
+</body>
+</html>
