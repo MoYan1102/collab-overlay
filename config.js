@@ -6,7 +6,7 @@
 
 window.APP_CONFIG = {
   room: 'change-me-to-a-random-string',
-  firebaseConfig = {
+  firebase: {
   	apiKey: "AIzaSyB0lv1zSkH-n7oNFqG6tdHmsfyENuoi6bQ",
   	authDomain: "collab-overlay.firebaseapp.com",
   	databaseURL: "https://collab-overlay-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -14,5 +14,5 @@ window.APP_CONFIG = {
   	storageBucket: "collab-overlay.firebasestorage.app",
   	messagingSenderId: "543804268381",
   	appId: "1:543804268381:web:f57e5bb1c1f25dcd0bd2b4"
-	};
+  },
 };
