@@ -7,7 +7,17 @@
 <style>
 .rounds { grid-template-columns: repeat(3, 1fr); }
 .rounds button, .phases button { font-family: var(--serif); letter-spacing: 4px; padding: 11px 4px; font-size: 15px; }
-.phases { grid-template-columns: repeat(4, 1fr); }
+.steps6 { grid-template-columns: repeat(4, 1fr); }
+.finals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.finals .st b { font-family: var(--serif); letter-spacing: 2px; }
+.steps6 button { font-size: 12px; padding: 8px 2px; letter-spacing: 1px; }
+.flowNow { border: 1px solid #fff; background: #000; padding: 12px 14px; }
+.flowNow .a { font-size: 12px; color: var(--mu); letter-spacing: 2px; }
+.flowNow .b { font-family: var(--serif); font-size: 24px; font-weight: 900; letter-spacing: 3px; margin: 2px 0; }
+.flowNow .c { font-size: 13px; color: #ccc; }
+.flowNow .d { font-size: 12px; color: var(--mu); margin-top: 6px; border-top: 1px dashed var(--line2); padding-top: 6px; }
+.stamps .st.hot { border-color: var(--ac); box-shadow: 0 0 0 1px var(--ac); }
+.rules { font-size: 12px; color: var(--mu); line-height: 1.8; }
 .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .side h3 { margin: 0 0 6px; font-family: var(--serif); font-size: 14px; letter-spacing: 3px; }
 .cards { display: flex; flex-direction: column; gap: 5px; }
@@ -37,14 +47,16 @@
 </head>
 <body>
 <header><h1>豬格拉底法庭</h1><a href="control-act1.html" id="toAct1">← 第一部控制台</a><a href="chat-hub.html" id="toHub" target="_blank">聊天統計中心 ↗</a>
-<span class="muted" style="margin-left:auto">快捷鍵：<kbd>Enter</kbd> 送出選取的卡　<kbd>Esc</kbd> 收卡　<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 換輪　<kbd>S</kbd> 停止計時</span></header>
+<span class="muted" style="margin-left:auto">快捷鍵：<kbd>N</kbd> 下一步　<kbd>Enter</kbd> 送出選取的卡　<kbd>Esc</kbd> 收卡　<kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 換輪　<kbd>S</kbd> 停止計時</span></header>
 <div class="wrap">
   <div class="col">
     <section class="box">
-      <h2>輪次與階段</h2>
+      <h2>流程（照順序按「下一步」就好）</h2>
+      <div class="flowNow" id="flowNow"></div>
+      <div class="row"><button id="stepPrev">◀ 上一步</button><button id="stepNext" class="big live" style="flex:1">下一步 ▶　N</button></div>
       <div class="grid rounds" id="rounds"></div>
-      <div class="grid phases" id="phases"></div>
-      <div class="muted">輪次只用來分段；按階段會順便開始軟計時（表決不計時）。卡片任何時候都能出。</div>
+      <div class="grid steps6" id="steps6"></div>
+      <div class="muted">每輪：正方申論 → 反方質詢 → 反方申論 → 正方質詢。切換步驟會自動開始計時。</div>
     </section>
 
     <section class="box">
@@ -76,9 +88,12 @@
     </section>
 
     <section class="box">
-      <h2>陪審團印章</h2>
-      <div class="stamps" id="stamps"></div>
-      <div class="row"><button id="toVerdict" class="big accent">進入最終裁決</button></div>
+      <h2>心證紀錄（不分勝負）</h2>
+      <div class="stamps" id="trail"></div>
+      <div class="muted">每輪最後一步（正方質詢）按「下一步」離開時，會自動記下當下的票數。要重記可以按該輪的「重新記錄」。<br>YouTube 的票約 15 秒才更新一次：請大家表態後，等 20 秒再按下一步。</div>
+      <h2 style="margin-top:6px">最終立場（最終心證畫面用）</h2>
+      <div class="finals" id="finals"></div>
+      <div class="row"><button id="toVerdict" class="big accent">進入最終心證</button></div>
     </section>
 
     <div id="common" class="col"></div>
@@ -102,17 +117,40 @@ $('lnkP').value = new URL('player.html' + q + '&side=p', location.href).href;
 $('lnkS').value = new URL('player.html' + q + '&side=s', location.href).href;
 document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { navigator.clipboard?.writeText($(b.dataset.copy).value); b.textContent = '已複製'; setTimeout(() => b.textContent = '複製', 1200); });
 
-$('rounds').innerHTML = [1, 2, 3].map(r => `<button data-r="${r}">${RZ[r]}</button>`).join('');
-const setRound = r => Sync.update({ scene: 'court', 'court/round': r, 'court/phase': '', 'court/card/id': '', 'court/card/side': '', 'court/timer/running': false, 'featured/show': false });
-$('rounds').onclick = e => { const b = e.target.closest('[data-r]'); if (b) setRound(Number(b.dataset.r)); };
-
-$('phases').innerHTML = D.phases.map(p => `<button data-ph="${p}">${p}</button>`).join('');
-$('phases').onclick = e => {
-  const b = e.target.closest('[data-ph]'); if (!b) return;
-  const ph = b.dataset.ph, patch = { scene: 'court', 'court/phase': ph };
-  patch['court/timer'] = PH_TIME[ph] ? { start: Sync.now(), dur: PH_TIME[ph], running: true, label: ph } : { start: 0, dur: 0, running: false, label: '' };
-  Sync.update(patch);
+// ---- 流程：輪次 × 6 步 ----
+const STEPS = D.courtSteps;
+const stepName = (round, i) => {
+  const x = STEPS[i]; if (!x) return '';
+  return `${D.sideShort[x.who]}${x.label}（${D.hosts[x.who]}）`;
 };
+function goStep(round, step) {
+  const x = STEPS[step];
+  const patch = { scene: 'court', 'court/round': round, 'court/step': step, 'court/phase': x ? x.label : '' };
+  patch['court/timer'] = x ? { start: Sync.now(), dur: x.dur, running: true, label: stepName(round, step).replace(/（.*）/, '') } : { start: 0, dur: 0, running: false, label: '' };
+  Sync.update(patch);
+}
+const setRound = r => { Sync.update({ 'court/card/id': '', 'court/card/side': '', 'featured/show': false }); goStep(r, 0); };
+function stepBy(d) {
+  const c = Sync.get().court;
+  let r = c.round, i = c.step + d;
+  if (Sync.get().scene !== 'court' || c.step < 0) { goStep(r || 1, 0); return; }
+  if (i >= STEPS.length) {
+    Sync.snapRound(r);   // 離開本輪最後一步時，記下心證
+    if (r >= 3) { Sync.update({ 'court/step': STEPS.length, 'court/timer/running': false }); return; }
+    r++; i = 0; Sync.update({ 'court/card/id': '', 'court/card/side': '' });
+  }
+  if (i < 0) { if (r <= 1) return; r--; i = STEPS.length - 1; }
+  goStep(r, i);
+}
+$('stepNext').onclick = () => stepBy(1);
+$('stepPrev').onclick = () => stepBy(-1);
+$('rounds').innerHTML = [1, 2, 3].map(r => `<button data-r="${r}">${RZ[r]}</button>`).join('');
+$('rounds').onclick = e => { const b = e.target.closest('[data-r]'); if (b) setRound(Number(b.dataset.r)); };
+function renderSteps6() {
+  const c = Sync.get().court;
+  $('steps6').innerHTML = STEPS.map((x, i) => `<button data-sx="${i}">${stepName(c.round, i).replace(/（.*）/, '')}</button>`).join('');
+}
+$('steps6').onclick = e => { const b = e.target.closest('[data-sx]'); if (b) goStep(Sync.get().court.round, Number(b.dataset.sx)); };
 
 function cardList(side) {
   const cs = D.cards[side];
@@ -153,14 +191,26 @@ renderPreview();
 $('unshow').onclick = () => Sync.update({ 'court/card/id': '', 'court/card/side': '' });
 $('tStop').onclick = () => Sync.update({ 'court/timer/running': false });
 
-$('stamps').innerHTML = [1, 2, 3].map(r => `<div class="st"><div class="w" data-w="${r}"></div>
-  <div class="row"><button data-st="s" data-sr="${r}">正方</button><button data-st="p" data-sr="${r}">反方</button><button data-st="" data-sr="${r}">清除</button></div></div>`).join('');
-$('stamps').onclick = e => {
-  const b = e.target.closest('[data-st]'); if (!b) return;
-  const r = Number(b.dataset.sr), side = b.dataset.st;
-  const patch = { ['court/stamps/r' + r]: side };
-  if (side) patch['court/stampEvt'] = { side, round: r, t: Sync.now() };
-  Sync.update(patch);
+function renderTrail(st) {
+  const tr = st.court.trail || {};
+  $('trail').innerHTML = [1, 2, 3].map(n => {
+    const x = tr['r' + n];
+    const txt = !x ? '尚未記錄' : x.s + x.p === 0 ? '陪審團未表態' : `正 ${x.s}・反 ${x.p}（正 ${Math.round(x.s / (x.s + x.p) * 100)}%）`;
+    return `<div class="st"><div class="w">${RZ[n]}：${txt}</div><div class="row"><button data-snap="${n}">${x ? '重新記錄' : '記錄'}</button>${x ? `<button data-unsnap="${n}">清除</button>` : ''}</div></div>`;
+  }).join('');
+  const fz = st.court.final || {};
+  $('finals').innerHTML = ['s', 'p'].map(sd => `<div class="st"><div class="w"><b>${D.hosts[sd]}</b>｜${D.sideShort[sd]}</div>
+    <div class="row"><button data-fin="${sd}" data-v="keep" class="${fz[sd] === 'keep' ? 'on' : ''}">堅持</button><button data-fin="${sd}" data-v="moved" class="${fz[sd] === 'moved' ? 'on' : ''}">動搖了</button></div></div>`).join('');
+}
+$('trail').onclick = e => {
+  const a = e.target.closest('[data-snap]'), b = e.target.closest('[data-unsnap]');
+  if (a) Sync.snapRound(Number(a.dataset.snap));
+  if (b) Sync.update({ ['court/trail/r' + b.dataset.unsnap]: null });
+};
+$('finals').onclick = e => {
+  const b = e.target.closest('[data-fin]'); if (!b) return;
+  const cur = (Sync.get().court.final || {})[b.dataset.fin];
+  Sync.update({ ['court/final/' + b.dataset.fin]: cur === b.dataset.v ? '' : b.dataset.v });
 };
 $('toVerdict').onclick = () => Sync.update({ scene: 'verdict', 'court/card/id': '', 'court/timer/running': false, 'featured/show': false });
 
@@ -169,6 +219,7 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape') $('unshow').click();
   else if (e.key === 'Enter') sendSel();
   else if (['1', '2', '3'].includes(e.key)) setRound(Number(e.key));
+  else if (e.key.toLowerCase() === 'n') stepBy(1);
   else if (e.key.toLowerCase() === 's') $('tStop').click();
 });
 
@@ -184,7 +235,16 @@ setInterval(tick, 250);
 Sync.onChange(st => {
   const c = st.court, used = c.used || {}, inCourt = st.scene === 'court';
   document.querySelectorAll('[data-r]').forEach(b => b.classList.toggle('on', inCourt && Number(b.dataset.r) === c.round));
-  document.querySelectorAll('[data-ph]').forEach(b => b.classList.toggle('on', inCourt && b.dataset.ph === c.phase));
+  renderSteps6();
+  document.querySelectorAll('[data-sx]').forEach(b => b.classList.toggle('on', inCourt && Number(b.dataset.sx) === c.step));
+  const info = Sync.stepInfo(st);
+  const nr = c.step + 1 >= STEPS.length ? (c.round < 3 ? [c.round + 1, 0] : null) : [c.round, c.step + 1];
+  $('flowNow').innerHTML = inCourt && info
+    ? `<div class="a">第 ${c.round} 輪　步驟 ${c.step + 1} / ${STEPS.length}</div><div class="b">${stepName(c.round, c.step)}</div><div class="c">${info.hint}</div>
+       <div class="d">${info.last ? '⚠ 本輪最後一步：請聊天室打 1 或 2 表態，等約 20 秒再按下一步（會自動記下心證）<br>' : ''}下一步：${nr ? `${nr[1] === 0 ? `第 ${nr[0]} 輪・` : ''}${stepName(nr[0], nr[1])}` : '三輪結束 → 確認最終立場 → 進入最終心證'}</div>`
+    : inCourt && c.step >= STEPS.length ? '<div class="b">三輪結束</div><div class="c">確認兩人的最終立場，再按「進入最終心證」</div>'
+    : '<div class="c">還沒開始。按「下一步」從第一輪「正方申論」開始</div>';
+  document.querySelectorAll('#trail .st').forEach((el, i) => el.classList.toggle('hot', inCourt && info && info.last && i + 1 === c.round));
   document.querySelectorAll('.cd').forEach(b => {
     b.classList.toggle('used', !!used[b.dataset.id]);
     b.classList.toggle('live', c.card.id === b.dataset.id);
@@ -197,11 +257,7 @@ Sync.onChange(st => {
     ? `<span class="muted">${D.hosts[c.card.side]}｜${card.type === 'q' ? '質詢卡' : '論點卡'}${c.card.id === 'custom' ? '（臨時卡）' : ''}${inCourt ? '' : '　※ 法庭環節才會顯示'}</span><br><b>${esc(card.title)}</b>`
     : '<span class="muted">目前沒有卡片</span>';
   renderPreview();
-  [1, 2, 3].forEach(r => {
-    const w = c.stamps['r' + r];
-    document.querySelector(`[data-w="${r}"]`).textContent = `${RZ[r]}：${w === 's' ? '正方（蘇格拉底）' : w === 'p' ? '反方（快樂的豬）' : '未表決'}`;
-    document.querySelectorAll(`[data-st][data-sr="${r}"]`).forEach(b => b.classList.toggle('on', !!b.dataset.st && b.dataset.st === w));
-  });
+  renderTrail(st);
   tick();
 });
 </script>

@@ -23,6 +23,9 @@
 .timer { font-family: "Times New Roman", serif; font-size: 36px; font-weight: 700; }
 .timer.over { color: var(--ac); }
 #cTitle, #cBody { width: 100%; }
+.turn { border: 1px solid var(--line2); padding: 10px 12px; font-size: 14px; color: #ccc; }
+.turn.mine { border-color: var(--ac); background: rgba(255,59,48,.12); color: #fff; }
+.turn.mine b { color: var(--ac); font-family: var(--serif); font-size: 18px; letter-spacing: 3px; }
 .c.sel { outline: 2px solid var(--ac); outline-offset: -2px; }
 .preview { border: 1px solid var(--line2); background: #000; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
 .preview.on { border-color: #fff; }
@@ -55,6 +58,7 @@
     <section class="box">
       <h2>現在</h2>
       <div class="row between"><span class="ph" id="phase"></span><span class="timer" id="timer"></span></div>
+      <div class="turn" id="turn"></div>
       <div class="status" id="live"></div>
     </section>
     <section class="box">
@@ -134,7 +138,14 @@ setInterval(tick, 250);
 
 Sync.onChange(st => {
   const c = st.court, used = c.used || {}, inCourt = st.scene === 'court';
-  $('phase').textContent = inCourt ? `${RZ[c.round]}${c.phase ? '　' + c.phase : ''}` : (D.sceneNames[st.scene] || '');
+  const info = Sync.stepInfo(st);
+  $('phase').textContent = inCourt ? `${RZ[c.round]}${info ? '　' + (info.side ? D.sideShort[info.side] : '') + info.label : ''}` : (D.sceneNames[st.scene] || '');
+  const mine = inCourt && info && info.side === SIDE;
+  $('turn').className = 'turn ' + (mine ? 'mine' : '');
+  $('turn').innerHTML = inCourt && info
+    ? (mine ? `<b>輪到你了</b>　${info.label}：${info.hint}`
+            : info.side ? `輪到${D.hosts[info.side]}${info.label}，準備回應` : `${info.label}：${info.hint}`)
+    : '法庭開始後，這裡會顯示現在輪到誰';
   document.querySelectorAll('.c').forEach(b => {
     const live = c.card.side === SIDE && c.card.id === b.dataset.id;
     b.classList.toggle('live', live);

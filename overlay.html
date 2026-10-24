@@ -46,10 +46,31 @@
 .wnames { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 0; margin: 12px 0 18px; padding-bottom: 16px; border-bottom: 1.5px dashed var(--line); }
 .wnames span { font-size: 24px; font-weight: 900; letter-spacing: .2em; display: flex; align-items: center; gap: 12px; }
 .wnames span::before { content: '✦'; font-size: 14px; color: var(--mute); letter-spacing: 0; }
-.whl .w { display: grid; grid-template-columns: 270px 1fr; gap: 18px; align-items: baseline; padding: 8px 0; }
+.whl .w { display: grid; grid-template-columns: 160px 1fr; gap: 18px; align-items: baseline; padding: 8px 0; }
 .whl .nm { font-weight: 900; font-size: 24px; letter-spacing: .12em; }
 .whl .nm em { font-style: normal; color: var(--mute); font-size: 16px; margin-left: 10px; font-weight: 700; }
 .whl .ln { font-size: 20px; color: #ddd; line-height: 1.6; }
+
+/* 0 票與心證軌跡 */
+.vwait { display: none; text-align: center; font-size: 20px; font-weight: 700; letter-spacing: .2em; color: var(--mute); padding: 6px 0; }
+#votes.empty .vwait { display: block; }
+#votes.empty #vNum { display: none; }
+#trailMini { margin-top: 10px; padding-top: 10px; display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 8px; align-items: center; font-size: 13px; color: var(--mute); letter-spacing: .1em; }
+#trailMini .tp { text-align: center; border: 1.5px solid var(--line); padding: 2px 0; }
+#trailMini .tp b { display: block; color: var(--fg); font-size: 15px; }
+#trailMini .tp.off b { color: var(--dim); }
+.trail { margin-top: 14px; }
+.trow { display: grid; grid-template-columns: 120px 1fr 190px; gap: 16px; align-items: center; padding: 7px 0; border-top: 1.5px dashed var(--line); }
+.trow .l { font-size: 18px; letter-spacing: .2em; color: var(--mute); }
+.trow .vbar { height: 24px; margin: 0; }
+.trow .v { font-family: var(--num); font-size: 19px; text-align: right; }
+.trow.na .vbar { border-style: dashed; border-color: var(--dim); background: transparent; }
+.trow.na .v { font-family: var(--serif); color: var(--mute); font-size: 16px; }
+.finals { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; padding-top: 14px; border-top: 1.5px dashed var(--line); }
+.finals .f { border: 2px solid var(--fg); padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; }
+.finals .f.s { background: var(--s-bg); color: var(--s-fg); }
+.finals .f b { font-size: 24px; letter-spacing: .2em; }
+.closing { margin-top: 16px; text-align: center; font-size: 20px; color: #ddd; letter-spacing: .1em; }
 
 /* 精選留言 */
 
@@ -105,10 +126,6 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 .vnum .pc { font-family: var(--num); font-size: 18px; color: var(--mute); margin: 0 6px; }
 .vmeta { margin-top: 8px; padding-top: 8px; font-size: 15px; color: var(--mute); display: flex; justify-content: space-between; letter-spacing: .1em; }
 .vmeta b { color: var(--red); font-family: var(--num); font-size: 22px; margin: 0 4px; }
-#stampsRow { margin-top: 10px; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--mute); letter-spacing: .2em; }
-#stampsRow .seals { display: flex; gap: 6px; }
-.seal { width: 30px; height: 30px; border: 2px solid var(--red); color: var(--red); font-weight: 900; font-size: 14px; display: flex; align-items: center; justify-content: center; letter-spacing: 0; }
-.seal.off { border: 1.5px dashed var(--dim); color: var(--dim); }
 
 /* 主內容區 */
 #main { position: absolute; left: var(--main-x); top: var(--main-y); width: var(--main-w); }
@@ -130,13 +147,30 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 .drawing .big { color: var(--dim); }
 
 /* 法庭 */
-#roundHead { position: absolute; left: 0; top: 0; width: 100%; padding: 14px 30px; display: flex; align-items: center; gap: 22px; border-radius: 18px; }
+#roundHead { position: absolute; left: 0; top: 0; width: 100%; padding: 14px 30px 16px; border-radius: 18px; }
+#roundHead .rh1 { display: flex; align-items: center; gap: 22px; }
+.track { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; }
+.track .t { border: 1.5px solid var(--dim); color: var(--dim); text-align: center; font-size: 15px; font-weight: 700; padding: 5px 2px; letter-spacing: .1em; white-space: nowrap; }
+.track .t.done { border-color: var(--line); color: var(--mute); }
+.track .t.now { border-color: var(--fg); background: var(--fg); color: #000; }
+.track .t.now.p { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
+.track .t.now.vote { background: var(--red); border-color: var(--red); color: #fff; }
+.nowline { margin-top: 12px; padding-top: 10px; border-top: 1.5px dashed var(--line); display: flex; align-items: baseline; gap: 16px; font-size: 22px; }
+.nowline:empty { display: none; }
+.nowline .who { flex: none; font-weight: 900; font-size: 26px; letter-spacing: .12em; }
+.nowline .who small { font-size: 16px; color: var(--mute); margin-left: 8px; letter-spacing: .1em; }
+.nowline .hint { color: #ddd; }
+#votes.voting { border-color: var(--red); box-shadow: 0 0 0 3px var(--red); }
+#votes .vcall { display: none; margin: -4px 0 8px; text-align: center; background: var(--red); color: #fff; font-weight: 900; letter-spacing: .3em; font-size: 17px; padding: 3px 0; }
+#votes.voting .vcall { display: block; }
+.verdictWin { margin-top: 18px; text-align: center; font-weight: 900; font-size: 34px; letter-spacing: .15em; }
+.verdictWin small { display: block; font-size: 16px; color: var(--mute); font-weight: 500; letter-spacing: .1em; margin-top: 6px; }
 #roundHead .rn { font-size: 18px; letter-spacing: .3em; white-space: nowrap; color: var(--mute); }
 #roundHead .rn b { color: var(--fg); font-family: var(--num); font-size: 24px; letter-spacing: 0; margin: 0 4px; }
 #roundHead .rt { font-weight: 900; font-size: 27px; letter-spacing: .08em; flex: 1; }
 #roundHead .ph { font-size: 17px; font-weight: 700; letter-spacing: .25em; padding: 4px 12px; border: 1.5px solid var(--fg); white-space: nowrap; }
 #roundHead .ph:empty { display: none; }
-#cardPanel { top: 96px; padding: 0; }
+#cardPanel { top: 196px; padding: 0; }
 .card { border: 2.5px solid var(--fg); border-radius: 24px; padding: 26px 40px 30px; position: relative; overflow: hidden; }
 .card.s { background: rgba(255,255,255,.96); color: #000; }
 .card.p { background: var(--panel); color: #fff; }
@@ -164,10 +198,6 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 .vrow .l { display: flex; justify-content: space-between; font-size: 18px; letter-spacing: .2em; color: var(--mute); }
 .vrow .vbar { height: 34px; margin: 8px 0 4px; }
 .vrow .lbl { display: flex; justify-content: space-between; font-family: var(--num); font-size: 22px; }
-.stampTally { display: flex; justify-content: center; align-items: center; gap: 70px; margin-top: 28px; padding-top: 22px; font-weight: 900; font-size: 24px; letter-spacing: .25em; }
-.stampTally b { font-family: var(--num); font-size: 64px; color: var(--red); margin-left: 14px; letter-spacing: 0; }
-.stampTally small { font-size: 16px; color: var(--mute); margin-left: 8px; letter-spacing: .1em; }
-.stampTally .vs { font-family: var(--num); color: var(--dim); font-size: 30px; letter-spacing: 0; }
 
 
 /* 賽事介紹 */
@@ -183,6 +213,27 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 .wgrid .ln { font-size: 16px; color: #bbb; margin-top: 2px; }
 .wname { font-size: 64px; letter-spacing: .3em; }
 .wline { font-size: 26px; font-weight: 700; margin: 4px 0 18px; }
+
+/* 0 票與心證軌跡 */
+.vwait { display: none; text-align: center; font-size: 20px; font-weight: 700; letter-spacing: .2em; color: var(--mute); padding: 6px 0; }
+#votes.empty .vwait { display: block; }
+#votes.empty #vNum { display: none; }
+#trailMini { margin-top: 10px; padding-top: 10px; display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 8px; align-items: center; font-size: 13px; color: var(--mute); letter-spacing: .1em; }
+#trailMini .tp { text-align: center; border: 1.5px solid var(--line); padding: 2px 0; }
+#trailMini .tp b { display: block; color: var(--fg); font-size: 15px; }
+#trailMini .tp.off b { color: var(--dim); }
+.trail { margin-top: 14px; }
+.trow { display: grid; grid-template-columns: 120px 1fr 190px; gap: 16px; align-items: center; padding: 7px 0; border-top: 1.5px dashed var(--line); }
+.trow .l { font-size: 18px; letter-spacing: .2em; color: var(--mute); }
+.trow .vbar { height: 24px; margin: 0; }
+.trow .v { font-family: var(--num); font-size: 19px; text-align: right; }
+.trow.na .vbar { border-style: dashed; border-color: var(--dim); background: transparent; }
+.trow.na .v { font-family: var(--serif); color: var(--mute); font-size: 16px; }
+.finals { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 14px; padding-top: 14px; border-top: 1.5px dashed var(--line); }
+.finals .f { border: 2px solid var(--fg); padding: 10px 16px; display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; }
+.finals .f.s { background: var(--s-bg); color: var(--s-fg); }
+.finals .f b { font-size: 24px; letter-spacing: .2em; }
+.closing { margin-top: 16px; text-align: center; font-size: 20px; color: #ddd; letter-spacing: .1em; }
 
 /* 精選留言 */
 #featured { position: absolute; left: 50%; top: var(--feat-y); transform: translateX(-50%); max-width: 1120px; min-width: 520px; padding: 16px 30px; display: flex; gap: 20px; align-items: flex-start; border-radius: 20px; }
@@ -201,13 +252,6 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 #bar .ev { padding: 0 28px; height: 100%; display: flex; align-items: center; background: var(--fg); color: #000; font-weight: 900; white-space: nowrap; letter-spacing: .12em; }
 
 /* 蓋章特效 */
-#stampFx { position: absolute; left: 50%; top: 45%; transform: translate(-50%,-50%); pointer-events: none; opacity: 0; }
-#stampFx .ring { padding: 26px 46px; border: 10px solid var(--red); border-radius: 22px; color: var(--red); font-weight: 900; text-align: center; background: rgba(11,11,11,.92); transform: rotate(-8deg); white-space: nowrap; }
-#stampFx .ring small { display: block; font-size: 22px; letter-spacing: .4em; }
-#stampFx .ring span { display: block; font-size: 76px; line-height: 1.3; letter-spacing: .2em; }
-#stampFx .ring span em { display: block; font-style: normal; font-size: 30px; letter-spacing: .2em; }
-#stampFx.go { animation: stamp 2.6s ease forwards; }
-@keyframes stamp { 0% { opacity: 0; transform: translate(-50%,-50%) scale(2.4); } 12% { opacity: 1; transform: translate(-50%,-50%) scale(.95); } 18% { transform: translate(-50%,-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1); } }
 
 #conn { position: absolute; right: 10px; bottom: 64px; font-size: 13px; padding: 2px 8px; background: var(--red); color: #fff; display: none; }
 </style>
@@ -218,10 +262,11 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 
   <div id="votes" class="frame fade">
     <div class="vh"><span class="s"><span class="k"><b>1</b></span><span class="nm"><small>正方</small>蘇格拉底</span></span><span class="p"><span class="nm r"><small>反方</small>快樂的豬</span><span class="k"><b>2</b></span></span></div>
-    <div class="vbar"><i id="vFill"></i><div class="mark" id="vMark"></div></div>
-    <div class="vnum"><span><span class="n" id="vS">0</span><span class="pc" id="vSp"></span></span><span><span class="pc" id="vPp"></span><span class="n" id="vP">0</span></span></div>
+    <div class="vcall">本輪結束前　打 1 或 2 表態</div><div class="vbar"><i id="vFill"></i><div class="mark" id="vMark"></div></div>
+    <div class="vnum" id="vNum"><span><span class="n" id="vS">0</span><span class="pc" id="vSp"></span></span><span><span class="pc" id="vPp"></span><span class="n" id="vP">0</span></span></div>
+    <div class="vwait" id="vWait">等待陪審團表態…</div>
     <div class="vmeta dash" id="vMeta"></div>
-    <div id="stampsRow" class="dash"><div class="seals" id="sealsS"></div><span>陪審團印章</span><div class="seals" id="sealsP"></div></div>
+    <div id="trailMini" class="dash"></div>
   </div>
 
   <div id="timer" class="hidden fade"><div class="box sq"><span class="lb" id="tLabel"></span><span id="tVal"></span></div></div>
@@ -230,7 +275,11 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
     <div id="storyPanel" class="panel frame fade hidden"></div>
     <div id="infoPanel" class="panel frame fade hidden"></div>
     <div id="qPanel" class="panel frame fade hidden"></div>
-    <div id="roundHead" class="frame fade hidden"><span class="rn" id="rn"></span><span class="rt" id="rt"></span><span class="ph" id="ph"></span></div>
+    <div id="roundHead" class="frame fade hidden">
+      <div class="rh1"><span class="rn" id="rn"></span><span class="rt" id="rt"></span></div>
+      <div class="track" id="track"></div>
+      <div class="nowline" id="nowline"></div>
+    </div>
     <div id="cardPanel" class="panel fade hidden"></div>
     <div id="verdictPanel" class="panel frame fade hidden"></div>
   </div>
@@ -239,7 +288,6 @@ body.preview #stage { background: #3d4a46 repeating-linear-gradient(45deg, #3642
 
   <div id="bar"><div class="now" id="barNow"></div><div class="how">打 <b class="s">1</b> 正方（蘇格拉底）　打 <b>2</b> 反方（快樂的豬）</div><div class="ev" id="barEv"></div></div>
 
-  <div id="stampFx"><div class="ring"><small>陪審團印章</small><span id="fxSide"></span><small id="fxRound"></small></div></div>
   <div id="conn"></div>
 </div>
 
@@ -261,31 +309,36 @@ $('barEv').textContent = D.event.short;
 const show = (el, on) => el.classList.toggle('hidden', !on);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ROUND_ZH = ['', '第一輪', '第二輪', '第三輪'];
-const prev = { drawT: null, cardT: null, stampT: null };
+const prev = { drawT: null, cardT: null };
 let drawTimer = null;
 const pct = (s, p) => s + p === 0 ? 50 : Math.round(s / (s + p) * 100);
 
+const pctOf = x => x && x.s + x.p > 0 ? Math.round(x.s / (x.s + x.p) * 100) : null;
 function renderVotes(st) {
   const v = st.votes, sc = st.scene, tot = Sync.totals(st);
   show($('votes'), v.show && ['story', 'act1', 'intermission', 'court', 'verdict'].includes(sc));
+  const empty = tot.s + tot.p === 0;
   const ps = pct(tot.s, tot.p);
-  $('vFill').style.width = ps + '%';
+  $('votes').classList.toggle('empty', empty);
+  $('vFill').style.width = (empty ? 0 : ps) + '%';
   $('vS').textContent = tot.s; $('vP').textContent = tot.p;
   $('vSp').textContent = ps + '%'; $('vPp').textContent = (100 - ps) + '%';
   const inCourt = sc === 'court' || sc === 'verdict';
   if (v.hasBase && inCourt) {
-    const bs = pct(v.baseS, v.baseP);
-    $('vMark').style.display = ''; $('vMark').style.left = bs + '%';
-    $('vMeta').innerHTML = `<span>入席 正方 ${bs}%</span><span>倒戈<b>${tot.turn}</b>人</span>`;
+    const bs = pct(v.baseS, v.baseP), hasB = v.baseS + v.baseP > 0;
+    $('vMark').style.display = hasB ? '' : 'none'; $('vMark').style.left = bs + '%';
+    $('vMeta').innerHTML = `<span>${hasB ? `入席 正方 ${bs}%` : '入席：陪審團未表態'}</span><span>倒戈<b>${tot.turn}</b>人</span>`;
   } else {
     $('vMark').style.display = 'none';
     $('vMeta').innerHTML = `<span>聊天室打 1 或 2 表態</span><span>${D.hosts.s} × ${D.hosts.p}</span>`;
   }
-  $('stampsRow').style.display = inCourt ? '' : 'none';
-  const stamps = st.court.stamps;
-  const won = side => [1, 2, 3].map(r => stamps['r' + r] === side);
-  $('sealsS').innerHTML = won('s').map(w => `<div class="seal ${w ? '' : 'off'}">正</div>`).join('');
-  $('sealsP').innerHTML = won('p').map(w => `<div class="seal ${w ? '' : 'off'}">反</div>`).join('');
+  // 心證軌跡（小）
+  const tr = st.court.trail || {};
+  $('trailMini').style.display = sc === 'court' ? '' : 'none';
+  $('trailMini').innerHTML = '<span class="tl">心證軌跡</span>' + [1, 2, 3].map(n => {
+    const x = tr['r' + n], p0 = pctOf(x);
+    return `<span class="tp ${x ? '' : 'off'}">${ROUND_ZH[n].slice(1)}<b>${x ? (p0 === null ? '未表態' : `正 ${p0}%`) : '—'}</b></span>`;
+  }).join('');
 }
 
 function renderStory(st) {
@@ -306,9 +359,8 @@ function eventHTML(pg) {
       </div>`;
   }
   if (pg.type === 'whites') {
-    return `<div class="kicker">${pg.kicker}　共 ${pg.names.length} 位</div><div class="big" style="font-size:36px">${pg.title}</div>
-      <div class="wnames">${pg.names.map(n => `<span>${n}</span>`).join('')}</div>
-      <div class="whl">${pg.highlights.map(h => `<div class="w"><div class="nm">${h.name}${h.nick ? `<em>${h.nick}</em>` : ''}</div><div class="ln">${h.line}</div></div>`).join('')}</div>`;
+    return `<div class="kicker">${pg.kicker}</div><div class="big" style="font-size:38px">${pg.title}</div>
+      <div class="whl dash" style="padding-top:10px">${pg.highlights.map(h => `<div class="w"><div class="nm">${h.name}${h.nick ? `<em>${h.nick}</em>` : ''}</div><div class="ln">${h.line}</div></div>`).join('')}</div>${pg.foot ? `<div class="foot dash">${pg.foot}</div>` : ''}`;
   }
   const body = pg.bodyFrom === 'points' ? e.points.map(p => '・' + p).join('<br>') : pg.body;
   return `<div class="kicker">${pg.kicker}</div><div class="big">${pg.title}</div><div class="body">${body}</div>`;
@@ -376,9 +428,16 @@ function getCard(c) {
 
 function renderCourt(st) {
   const c = st.court;
-  $('rn').innerHTML = `第<b>${c.round}</b>輪`;
+  $('rn').innerHTML = `第<b>${c.round}</b>輪　/ 3`;
   $('rt').textContent = D.topic;
-  $('ph').textContent = c.phase || '';
+  const info = Sync.stepInfo(st);
+  $('track').innerHTML = D.courtSteps.map((x, i) => {
+    const cls = i < c.step ? 'done' : i === c.step ? `now ${x.who}` : '';
+    return `<div class="t ${cls}">${D.sideShort[x.who]}${x.label}</div>`;
+  }).join('');
+  $('nowline').innerHTML = info
+    ? `<span class="who">${info.side ? `${D.sides[info.side]}<small>${D.hosts[info.side]}</small>` : info.label}</span><span class="hint">${info.side ? info.label + '：' : ''}${info.hint}</span>`
+    : '';
   const card = getCard(c.card), panel = $('cardPanel');
   if (!card || !c.card.side) { show(panel, false); prev.cardT = c.card.t; return; }
   if (c.card.t !== prev.cardT) {
@@ -393,14 +452,22 @@ function renderCourt(st) {
 }
 
 function renderVerdict(st) {
-  const v = st.votes, stamps = st.court.stamps, tot = Sync.totals(st);
-  const bs = pct(v.baseS, v.baseP), fs = pct(tot.s, tot.p);
-  const cnt = side => [1, 2, 3].filter(r => stamps['r' + r] === side).length;
-  const row = (lb, ps, s, p) => `<div class="vrow"><div class="l"><span>${lb}</span></div><div class="vbar"><i style="width:${ps}%"></i></div>
-    <div class="lbl"><span>正方（蘇格拉底）　${ps}%（${s}）</span><span>（${p}）${100 - ps}%　反方（快樂的豬）</span></div></div>`;
-  $('verdictPanel').innerHTML = `<div class="kicker">最終裁決</div><div class="big" style="font-size:40px">${D.topic}</div>
-    ${v.hasBase ? row('入席表態', bs, v.baseS, v.baseP) : ''}${row('最終裁決', fs, tot.s, tot.p)}
-    <div class="stampTally dash"><span>正方<small>蘇格拉底</small><b>${cnt('s')}</b></span><span class="vs">VS</span><span>反方<small>快樂的豬</small><b>${cnt('p')}</b></span></div>`;
+  const v = st.votes, tot = Sync.totals(st), tr = st.court.trail || {};
+  const rows = [['入席表態', v.hasBase ? { s: v.baseS, p: v.baseP } : null]]
+    .concat([1, 2, 3].map(n => [ROUND_ZH[n], tr['r' + n]]))
+    .concat([['最終心證', { s: tot.s, p: tot.p }]]);
+  const rowHTML = ([lb, x]) => {
+    const p0 = pctOf(x);
+    if (p0 === null) return `<div class="trow na"><span class="l">${lb}</span><div class="vbar"></div><span class="v">陪審團未表態</span></div>`;
+    return `<div class="trow"><span class="l">${lb}</span><div class="vbar"><i style="width:${p0}%"></i></div><span class="v">正 ${p0}% ・ 反 ${100 - p0}%</span></div>`;
+  };
+  const fz = st.court.final || {};
+  const stance = sd => fz[sd] === 'keep' ? '堅持' : fz[sd] === 'moved' ? '動搖了' : '……';
+  const fin = sd => `<div class="f ${sd}"><span>${D.hosts[sd]}｜${D.sideShort[sd]}</span><b>${stance(sd)}</b></div>`;
+  $('verdictPanel').innerHTML = `<div class="kicker">最終心證　倒戈 ${tot.turn} 人</div><div class="big" style="font-size:36px">${D.topic}</div>
+    <div class="trail">${rows.map(rowHTML).join('')}</div>
+    <div class="finals">${fin('s')}${fin('p')}</div>
+    <div class="closing">這題沒有標準答案——11/1，來看真正的辯士怎麼說</div>`;
 }
 
 function renderTimer() {
@@ -421,22 +488,12 @@ function renderFeatured(st) {
   show($('featured'), on);
 }
 
-function stampFx(st) {
-  const e = st.court.stampEvt;
-  if (prev.stampT === null) { prev.stampT = e.t; return; }
-  if (e.t && e.t !== prev.stampT) {
-    prev.stampT = e.t;
-    if (Sync.now() - e.t > 5000 || !e.side) return;
-    $('fxSide').innerHTML = `${D.sideShort[e.side]}<em>${D.sideName[e.side]}</em>`;
-    $('fxRound').textContent = ROUND_ZH[e.round] || '';
-    const fx = $('stampFx'); fx.classList.remove('go'); void fx.offsetWidth; fx.classList.add('go');
-  }
-}
-
 Sync.onChange(st => {
   const sc = st.scene;
   $('seg').textContent = D.sceneNames[sc] || '';
-  $('barNow').textContent = st.bar.custom || D.sceneHints[sc] || '';
+  const si = sc === 'court' ? Sync.stepInfo(st) : null;
+  $('barNow').textContent = st.bar.custom || (si ? `第${st.court.round}輪｜${si.side ? D.sides[si.side] + si.label : si.label}　${si.hint}` : D.sceneHints[sc] || '');
+  $('votes').classList.toggle('voting', !!(si && si.last));
   show($('storyPanel'), sc === 'story');
   show($('infoPanel'), ['event', 'intermission', 'ending'].includes(sc));
   show($('roundHead'), sc === 'court');
@@ -446,7 +503,7 @@ Sync.onChange(st => {
   if (sc === 'act1') renderAct1(st); else show($('qPanel'), false);
   if (sc === 'court') renderCourt(st); else show($('cardPanel'), false);
   if (sc === 'verdict') renderVerdict(st);
-  renderVotes(st); renderFeatured(st); stampFx(st); renderTimer();
+  renderVotes(st); renderFeatured(st); renderTimer();
 });
 Sync.onStatus(s => {
   const el = $('conn');

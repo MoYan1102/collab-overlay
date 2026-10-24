@@ -16,17 +16,21 @@
     court: {
       round: 1,
       phase: '',
+      step: -1,
       card: { side: '', id: '', t: 0, custom: { type: 'arg', title: '', body: '' } },
       used: {},
       timer: { start: 0, dur: 120, running: false, label: '' },
       stamps: { r1: '', r2: '', r3: '' },
+      trail: { r1: null, r2: null, r3: null },   // 每輪結束時記下的心證 {s, p}
+      final: { s: '', p: '' },                    // 兩人的最終立場：keep 堅持／moved 動搖
       stampEvt: { side: '', round: 0, t: 0 },
     },
     // s/p/turn 由聊天統計頁（chat-hub）自動寫入；adj* 為手動修正，畫面顯示 = 自動 + 手動
     votes: {
       s: 0, p: 0, turn: 0,
       adjS: 0, adjP: 0, adjTurn: 0,
-      baseS: 0, baseP: 0, baseAdjS: 0, baseAdjP: 0, hasBase: false,
+      baseS: 0, baseP: 0, baseAdjS: 0, baseAdjP: 0, baseHubS: 0, baseHubP: 0, hasBase: false,
+      src: {},   // OneComme 中繼頁各自回報的票數：{ yanmo: {s,p,turn,voters,alive}, ... }
       show: true,
       cmd: { type: '', t: 0 },
     },
@@ -120,33 +124,52 @@
       .catch(() => setStatus('error'));
   }
 
-  // 畫面上的票數 = 聊天自動統計 + 手動修正
+  // 畫面上的票數 = 各來源自動統計（OneComme 中繼頁＋聊天統計中心）＋ 手動修正
+  Sync.srcSum = (st = state) => {
+    const o = { s: 0, p: 0, turn: 0, voters: 0 };
+    for (const v of Object.values(st.votes.src || {})) {
+      if (!v) continue;
+      o.s += v.s || 0; o.p += v.p || 0; o.turn += v.turn || 0; o.voters += v.voters || 0;
+    }
+    return o;
+  };
   Sync.totals = (st = state) => {
-    const v = st.votes;
+    const v = st.votes, src = Sync.srcSum(st);
     return {
-      s: Math.max(0, v.s + v.adjS),
-      p: Math.max(0, v.p + v.adjP),
-      turn: Math.max(0, v.turn + v.adjTurn),
+      s: Math.max(0, v.s + src.s + v.adjS),
+      p: Math.max(0, v.p + src.p + v.adjP),
+      turn: Math.max(0, v.turn + src.turn + v.adjTurn),
     };
   };
-  Sync.hubOnline = (st = state) => Sync.now() - (st.hub.alive || 0) < 15000;
+  Sync.hubOnline = (st = state) => Sync.now() - (st.hub.alive || 0) < 15000
+    || Object.values(st.votes.src || {}).some(x => x && Sync.now() - (x.alive || 0) < 15000);
 
-  // 共用投票指令：控制台送出，聊天統計頁同步處理自己的選票紀錄
+  // 共用投票指令：控制台送出，各統計頁同步處理自己的選票紀錄
   Sync.voteCmd = type => {
     const st = state, v = st.votes, tot = Sync.totals(st);
     const patch = { 'votes/cmd': { type, t: Sync.now() } };
     if (type === 'clear') {
       Object.assign(patch, { 'votes/s': 0, 'votes/p': 0, 'votes/adjS': 0, 'votes/adjP': 0, 'votes/turn': 0, 'votes/adjTurn': 0 });
     } else if (type === 'base') {
-      Object.assign(patch, { 'votes/baseS': tot.s, 'votes/baseP': tot.p, 'votes/baseAdjS': v.adjS, 'votes/baseAdjP': v.adjP, 'votes/hasBase': true, 'votes/turn': 0, 'votes/adjTurn': 0 });
+      Object.assign(patch, { 'votes/baseS': tot.s, 'votes/baseP': tot.p, 'votes/baseAdjS': v.adjS, 'votes/baseAdjP': v.adjP,
+        'votes/baseHubS': v.s, 'votes/baseHubP': v.p, 'votes/hasBase': true, 'votes/turn': 0, 'votes/adjTurn': 0 });
     } else if (type === 'restore') {
-      Object.assign(patch, {
-        'votes/s': Math.max(0, v.baseS - v.baseAdjS), 'votes/p': Math.max(0, v.baseP - v.baseAdjP),
-        'votes/adjS': v.baseAdjS, 'votes/adjP': v.baseAdjP, 'votes/turn': 0, 'votes/adjTurn': 0,
-      });
+      Object.assign(patch, { 'votes/s': v.baseHubS, 'votes/p': v.baseHubP, 'votes/adjS': v.baseAdjS, 'votes/adjP': v.baseAdjP, 'votes/turn': 0, 'votes/adjTurn': 0 });
     }
     Sync.update(patch);
   };
+
+  // 法庭目前步驟的資訊
+  Sync.stepInfo = (st = state) => {
+    const D = window.SHOW_DATA, c = st.court, steps = D.courtSteps || [];
+    const x = steps[c.step];
+    if (!x) return null;
+    const side = x.who || '';
+    return { ...x, side, name: side ? D.sideShort[side] + x.label : x.label, idx: c.step, total: steps.length, round: c.round, last: c.step === steps.length - 1 };
+  };
+
+  // 記下某一輪結束時的心證
+  Sync.snapRound = r => { const t = Sync.totals(); Sync.update({ ['court/trail/r' + r]: { s: t.s, p: t.p, t: Sync.now() } }); };
 
   window.Sync = Sync;
 })();

@@ -51,7 +51,7 @@
         <button id="vRestore">法庭開庭：從入席起算</button>
       </div>
       <div class="muted" id="vBaseInfo"></div>
-      <div class="muted">票數由「聊天統計中心」自動計算；± 按鈕是手動修正，會加在自動票數上。</div>
+      <div class="muted">票數由「聊天統計中心」自動計算（Twitch 即時，YouTube 約 15 秒更新一次，請大家表態後等約 20 秒再看結果）；± 按鈕是手動修正，會加在自動票數上。</div>
     </section>
 
     <section class="box">
@@ -123,7 +123,8 @@
       $('vShow').checked = v.show;
       $('vBaseInfo').textContent = v.hasBase ? `入席表態：正方 ${v.baseS}／反方 ${v.baseP}` : '尚未記錄入席表態';
       const on = Sync.hubOnline(st);
-      $('hubSt').textContent = on ? `聊天統計運作中｜${st.hub.voters} 人投票` : '聊天統計未開啟（僅手動）';
+      const srcs = Object.entries(st.votes.src || {}).filter(([k, x]) => x && Sync.now() - (x.alive || 0) < 15000).map(([k]) => k);
+      $('hubSt').textContent = on ? `自動統計運作中｜${Sync.srcSum(st).voters + (st.hub.voters || 0)} 人投票${srcs.length ? '｜' + srcs.join('、') : ''}` : '自動統計未開啟（僅手動）';
       $('hubSt').className = 'pill ' + (on ? 'ok' : 'warn');
       $('fState').textContent = st.featured.show ? '顯示中' : '未顯示';
       $('fState').className = 'pill ' + (st.featured.show ? 'ok' : '');

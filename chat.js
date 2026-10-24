@@ -51,8 +51,8 @@ window.ChatSources = (function () {
 
   // ---------- YouTube ----------
   // 需要 YouTube Data API 金鑰；每次輪詢耗 5 點配額（每日預設 10,000 點，太平洋時間午夜重置）。
-  // 最短 6 秒輪詢一次：2 小時約 1,200 次 ＝ 6,000 點，保留彩排的空間。
-  function youtube(apiKey, videoId, onMsg, onStatus, onQuota, minInterval = 6000) {
+  // 每 15 秒讀一次：2 小時約 480 次 ＝ 2,400 點。YouTube 的票最多會晚 15 秒才進來。
+  function youtube(apiKey, videoId, onMsg, onStatus, onQuota, minInterval = 15000) {
     const API = 'https://www.googleapis.com/youtube/v3/';
     let stopped = false, timer = null, chatId = '', pageToken = '';
     const startedAt = Date.now();
